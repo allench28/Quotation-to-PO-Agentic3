@@ -188,32 +188,9 @@ def process_with_bedrock(text_content):
     print(f"Sending to Bedrock - text length: {len(text_content)}")
     print(f"Text content: {text_content}")
     
-    # If PDF extraction failed, use the sample data you provided
-    if len(text_content.strip()) < 100:
-        print("PDF extraction failed, using sample quotation data")
-        text_content = """
-        ABC Stationery Supplies Pte Ltd.
-        10 Anson Road, #15-01 International Plaza
-        Singapore 079903
-        Phone: +65 6123 4567
-        Email: contact@abcstationery.com
-        From:
-        ABC Stationery Supplies Pte Ltd.
-        10 Anson Road, #15-01 International Plaza
-        Singapore 079903
-        To:
-        XYZ School Supplies
-        25 Bukit Timah Road
-        Singapore 259756
-        QUOTATION
-        Quote Number: QTN-2025-001
-        Date: 18 August 2025
-        Item Description Quantity Unit Price (SGD) Total (SGD)
-        Pen Blue Ink Ballpoint Pen 50 0.50 25.00
-        Notebook A4 Size, 200 Pages 30 2.00 60.00
-        Stapler Heavy Duty Stapler 10 5.00 50.00
-        Subtotal: 135.00
-        """
+    # If PDF extraction failed, return error instead of sample data
+    if len(text_content.strip()) < 50:
+        raise ValueError("Could not extract text from document. Please ensure the PDF contains readable text.")
     
     # Use Bedrock in us-east-1 where Claude models are available
     try:
@@ -366,24 +343,33 @@ def unused_bedrock_code():
         return parse_fallback(extracted_text)
 
 def parse_fallback(text):
-    """Fallback parsing if JSON extraction fails"""
+    """Basic text parsing if Bedrock JSON extraction fails"""
+    import re
+    
+    # Extract basic information using regex patterns
+    company_match = re.search(r'([A-Z][^\n]*(?:Pte|Ltd|Inc|Corp|Company)[^\n]*)', text, re.IGNORECASE)
+    email_match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', text)
+    phone_match = re.search(r'([+]?[0-9\s\-()]{8,})', text)
+    quote_match = re.search(r'(?:Quote|Quotation)\s*(?:Number|No|#)?[:\s]*([A-Z0-9\-]+)', text, re.IGNORECASE)
+    date_match = re.search(r'(\d{1,2}[\s/\-]\w+[\s/\-]\d{4}|\d{4}[\s/\-]\d{1,2}[\s/\-]\d{1,2})', text)
+    
+    # Extract amounts
+    amounts = re.findall(r'\$?([0-9,]+\.\d{2})', text)
+    total = float(amounts[-1].replace(',', '')) if amounts else 0
+    
     return {
-        "company_name": "ABC Stationery Supplies Pte Ltd.",
-        "email": "contact@abcstationery.com",
-        "phone": "+65 6123 4567",
-        "address": "10 Anson Road, #15-01 International Plaza Singapore 079903",
-        "buyer_name": "XYZ School Supplies",
-        "buyer_address": "25 Bukit Timah Road Singapore 259756",
-        "quote_number": "QTN-2025-001",
-        "date": "2025-08-18",
-        "items": [
-            {"description": "Blue Ink Ballpoint Pen", "quantity": 50, "unit_price": 0.50, "total_amount": 25.00},
-            {"description": "A4 Size, 200 Pages Notebook", "quantity": 30, "unit_price": 2.00, "total_amount": 60.00},
-            {"description": "Heavy Duty Stapler", "quantity": 10, "unit_price": 5.00, "total_amount": 50.00}
-        ],
-        "subtotal": 135.00,
+        "company_name": company_match.group(1).strip() if company_match else "Unknown Company",
+        "email": email_match.group(1) if email_match else "",
+        "phone": phone_match.group(1).strip() if phone_match else "",
+        "address": "Address not found",
+        "buyer_name": "Buyer not specified",
+        "buyer_address": "Buyer address not found",
+        "quote_number": quote_match.group(1) if quote_match else f"Q-{datetime.now().strftime('%Y%m%d')}",
+        "date": date_match.group(1) if date_match else datetime.now().strftime('%Y-%m-%d'),
+        "items": [{"description": "Items extracted from document", "quantity": 1, "unit_price": total, "total_amount": total}],
+        "subtotal": total,
         "tax": 0,
-        "total": 135.00
+        "total": total
     }
 
 def store_quotation(quotation_id, extracted_data, file_name, raw_text=""):
