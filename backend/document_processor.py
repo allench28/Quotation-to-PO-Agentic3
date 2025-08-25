@@ -189,12 +189,21 @@ def process_with_bedrock(text_content):
     print(f"Text content: {text_content}")
     
     # If PDF extraction failed, return error instead of sample data
-    if len(text_content.strip()) < 50:
+    if len(text_content.strip()) < 20:
         raise ValueError("Could not extract text from document. Please ensure the PDF contains readable text.")
     
     # Use Bedrock in us-east-1 where Claude models are available
     try:
         bedrock_client_east1 = boto3.client('bedrock-runtime', region_name='us-east-1')
+        
+        prompt = f"""Extract information from this quotation document and return ONLY a valid JSON object with these exact fields:
+
+{{"company_name": "supplier company name", "email": "email address", "phone": "phone number", "address": "full address", "buyer_name": "buyer company", "buyer_address": "buyer address", "quote_number": "quote number", "date": "date in YYYY-MM-DD format", "items": [{{"description": "item name", "quantity": number, "unit_price": number, "total_amount": number}}], "subtotal": number, "tax": number, "total": number}}
+
+Document text:
+{text_content}
+
+Return only the JSON object, no other text."""
         
         request_body = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -202,7 +211,7 @@ def process_with_bedrock(text_content):
             "messages": [
                 {
                     "role": "user",
-                    "content": f"Extract quotation data from this text and return JSON with fields: company_name, email, phone, address, buyer_name, buyer_address, quote_number, date, items (array), subtotal, tax, total. Text: {text_content}"
+                    "content": prompt
                 }
             ]
         }
@@ -214,6 +223,7 @@ def process_with_bedrock(text_content):
         
         response_body = json.loads(response['body'].read())
         extracted_text = response_body['content'][0]['text']
+        print(f"Bedrock raw response: {extracted_text}")
         
         # Parse JSON from response
         start_idx = extracted_text.find('{')
