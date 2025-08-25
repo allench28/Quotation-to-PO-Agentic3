@@ -11,14 +11,8 @@ REGION="us-east-1"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 echo "⚠️  This will delete all resources created by the deployment script."
-echo "Are you sure you want to continue? (y/N)"
-read -n 1 confirmation
-echo ""
-
-if [[ ! "$confirmation" =~ ^[Yy]$ ]]; then
-    echo "Cleanup cancelled."
-    exit 0
-fi
+echo "Starting cleanup in 3 seconds..."
+sleep 3
 
 echo "🗑️  Starting cleanup process..."
 
