@@ -121,11 +121,7 @@ aws lambda create-function \
 
 rm lambda-function.zip
 
-echo "Press 'q' to continue..."
-read -n 1 -s key
-while [ "$key" != "q" ]; do
-    read -n 1 -s key
-done
+echo "Lambda function created successfully. Continuing..."
 
 echo "🌐 Step 4/5: API Gateway with CORS"
 echo "=================================="
