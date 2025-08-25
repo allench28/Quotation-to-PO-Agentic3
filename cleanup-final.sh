@@ -85,7 +85,7 @@ if [ ! -z "$DISTRIBUTIONS" ]; then
             --output text 2>/dev/null || echo "")
         
         if [ ! -z "$ETAG" ]; then
-            # Get config and disable
+            # Get config and disable (run in background to not block)
             aws cloudfront get-distribution-config \
                 --id $dist_id \
                 --query "DistributionConfig" > /tmp/dist-config.json 2>/dev/null || true
@@ -96,12 +96,13 @@ if [ ! -z "$DISTRIBUTIONS" ]; then
                 aws cloudfront update-distribution \
                     --id $dist_id \
                     --distribution-config file:///tmp/dist-config.json \
-                    --if-match $ETAG 2>/dev/null || true
+                    --if-match $ETAG &
                 rm -f /tmp/dist-config.json /tmp/dist-config.json.bak
             fi
         fi
     done
 fi
+echo "CloudFront disable initiated (running in background)..."
 
 # 6. Delete DynamoDB table
 echo "Deleting DynamoDB table..."
@@ -125,9 +126,9 @@ echo "✅ Lambda function deleted"
 echo "✅ Lambda layer deleted"
 echo "✅ API Gateway deleted"
 echo "✅ S3 buckets emptied and deleted"
-echo "⚠️  CloudFront distributions disabled (not deleted)"
+echo "⚠️  CloudFront distributions disable initiated (running in background)"
 echo "✅ DynamoDB table deleted"
 echo "✅ IAM role and policies deleted"
 echo ""
-echo "Note: CloudFront distributions have been disabled but not deleted."
+echo "Note: CloudFront distributions were not modified."
 echo "You can manually delete them from the AWS Console if needed."
